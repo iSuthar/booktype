@@ -48,11 +48,9 @@ Read a book by typing it (monkeytype-style). Static site, no backend.
   - analytics hooks: track() events open/page/goal/chapter/share/upload -> GoatCounter
     once GOATCOUNTER_CODE is set at top of app.js (empty = off)
 - [x] Own git repo (home folder is also a git repo: never commit from there). 1 commit on main.
-- [x] LIVE 2026-10-24: http://codercraft.me/booktype/ (repo github.com/iSuthar/booktype, Pages from main /)
-  - codercraft.me is the custom domain of iSuthar.github.io; DNS is right, but GitHub has
-    no HTTPS cert for it (https_certificate null) -> https:// fails. Fix: re-save the custom
-    domain in iSuthar.github.io Settings > Pages (brief downtime), wait for cert, tick Enforce HTTPS.
-    Until then native share falls back to download (share needs https).
+- [x] LIVE 2026-10-24: https://codercraft.me/booktype/ (repo github.com/iSuthar/booktype, Pages from main /)
+  - codercraft.me = custom domain of iSuthar.github.io. HTTPS cert issued 2026-10-24 (expires
+    2027-01-22, GitHub auto-renews); Enforce HTTPS on for both repos.
 - [x] GoatCounter on: dashboard https://isuthar.goatcounter.com/ (pageviews + events: open/page/goal/chapter/share/upload)
 - [ ] Get 5 strangers to type a page
 - Ideas parked: ghost caret of your past pace, focus mode, more books (Gatsby, Dracula,
