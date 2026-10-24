@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>booktype</title>
+  <meta name="description" content="Read a book by typing it. Monkeytype-style typing practice with real books." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Literata:opsz,wght@7..72,400;7..72,600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="top">
+    <button class="logo" id="logo" title="Library (esc)">book<span>type</span></button>
+    <div class="bookinfo" id="bookinfo" hidden>
+      <span class="booktitle" id="booktitle"></span>
+      <select id="chapter" aria-label="Chapter"></select>
+    </div>
+  </header>
+
+  <!-- Library -->
+  <main id="library" class="library" hidden>
+    <h1>Pick a book. Read it with your fingers.</h1>
+    <p class="streakline" id="streakline"></p>
+    <div class="grid" id="grid"></div>
+    <p class="note">Bundled books are public domain (Project Gutenberg).
+      Books you open stay in your browser and are never uploaded.</p>
+  </main>
+
+  <!-- Typing -->
+  <main id="reader" class="reader" hidden>
+    <div class="stats" id="stats">
+      <div><b id="s-wpm">0</b><span>wpm</span></div>
+      <div><b id="s-acc">100%</b><span>acc</span></div>
+      <div><b id="s-prog">0%</b><span>book</span></div>
+      <div><b id="s-pages">0/3</b><span id="s-pages-l">pages today</span></div>
+      <div><b id="s-streak">0</b><span>day streak</span></div>
+    </div>
+    <div class="textwrap">
+      <div id="text" class="text" aria-live="off"></div>
+      <div id="blurred" class="blurred">click or press any key to keep reading</div>
+    </div>
+    <div class="hints">
+      <span><kbd>enter</kbd> or <kbd>space</kbd> ends a paragraph</span>
+      <span><kbd>tab</kbd> skip paragraph</span>
+      <span><kbd>esc</kbd> library</span>
+      <button id="opt-strict" class="opt"></button>
+      <button id="opt-font" class="opt"></button>
+      <button id="opt-goal" class="opt"></button>
+    </div>
+  </main>
+
+  <!-- Chapter results -->
+  <main id="results" class="results" hidden>
+    <p class="eyebrow" id="r-book"></p>
+    <h1 id="r-title"></h1>
+    <div class="tiles" id="r-tiles"></div>
+    <section id="r-chart-wrap">
+      <h3>Speed through the chapter <span>words per minute, each paragraph</span></h3>
+      <div class="chart" id="r-chart" role="img">
+        <canvas id="r-canvas"></canvas>
+        <div class="tip" id="r-tip" hidden></div>
+      </div>
+    </section>
+    <section id="r-slow-wrap">
+      <h3>Slowest words <span>practise these</span></h3>
+      <div class="chips" id="r-slow"></div>
+    </section>
+    <div class="actions">
+      <button class="btn" id="r-next">Next chapter →</button>
+      <button class="btn ghost" id="r-share">Share image</button>
+    </div>
+    <p class="hints"><span><kbd>enter</kbd> continue</span><span><kbd>esc</kbd> library</span></p>
+  </main>
+
+  <!-- Finished book -->
+  <main id="done" class="done" hidden>
+    <h1>The end.</h1>
+    <p id="done-text"></p>
+    <button class="btn" id="done-back">Back to library</button>
+  </main>
+
+  <textarea id="input" class="hidden-input" autocomplete="off" autocapitalize="off"
+    autocorrect="off" spellcheck="false" aria-label="Typing input"></textarea>
+  <input type="file" id="file" accept=".txt,.epub,text/plain,application/epub+zip" hidden />
+  <div id="toast" class="toast" role="status"></div>
+
+  <script src="books/index.js"></script>
+  <script src="parse.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
