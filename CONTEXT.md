@@ -39,8 +39,21 @@ Read a book by typing it (monkeytype-style). Static site, no backend.
 - Existing competitor: typelit.io (types classic books). Differentiate.
 
 ## State
-- [x] v0 works: library, 5 books, typing, chapters, resume, EPUB/TXT upload, mobile
-- [x] Tested in headless browser: typing, error, backspace, page turn, resume, chapter jump, EPUB
-- [ ] Deploy (GitHub Pages / Netlify / Cloudflare Pages, all free for static)
+- [x] v0 (2026-10-23): library, 5 books, typing, chapters, resume, EPUB/TXT upload, mobile
+- [x] v1 (2026-10-24), all tested headless:
+  - space mid-word skips rest of word (marked missed)
+  - daily page goal (1/3/5/10, button in hints) + day streak; goal-done toast
+  - chapter results screen: wpm/acc/time/chars/streak tiles, wpm-per-paragraph chart
+    with hover, 5 slowest words, "Share image" (1200x630 PNG, native share or download)
+  - analytics hooks: track() events open/page/goal/chapter/share/upload -> GoatCounter
+    once GOATCOUNTER_CODE is set at top of app.js (empty = off)
+- [x] Own git repo (home folder is also a git repo: never commit from there). 1 commit on main.
+- [ ] Push to GitHub + Pages: blocked on Ankit approving a public repo. Command:
+  `gh repo create iSuthar/booktype --public --source . --push` then
+  `gh api -X POST repos/iSuthar/booktype/pages -f "source[branch]=main" -f "source[path]=/"`
+  -> https://isuthar.github.io/booktype/
+- [ ] GoatCounter: Ankit signs up at goatcounter.com, gives site code -> set GOATCOUNTER_CODE
 - [ ] Get 5 strangers to type a page
-- Ideas parked: per-chapter stats graph, ghost caret of your past pace, more books, shareable "I typed Frankenstein" card
+- Ideas parked: ghost caret of your past pace, focus mode, more books (Gatsby, Dracula,
+  Metamorphosis, Dorian Gray, Jekyll & Hyde, Little Women, Art of War, Winnie-the-Pooh),
+  instant start for new visitors, themes, IndexedDB for big uploads
