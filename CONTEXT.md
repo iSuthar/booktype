@@ -48,10 +48,11 @@ Read a book by typing it (monkeytype-style). Static site, no backend.
   - analytics hooks: track() events open/page/goal/chapter/share/upload -> GoatCounter
     once GOATCOUNTER_CODE is set at top of app.js (empty = off)
 - [x] Own git repo (home folder is also a git repo: never commit from there). 1 commit on main.
-- [ ] Push to GitHub + Pages: blocked on Ankit approving a public repo. Command:
-  `gh repo create iSuthar/booktype --public --source . --push` then
-  `gh api -X POST repos/iSuthar/booktype/pages -f "source[branch]=main" -f "source[path]=/"`
-  -> https://isuthar.github.io/booktype/
+- [x] LIVE 2026-10-24: http://codercraft.me/booktype/ (repo github.com/iSuthar/booktype, Pages from main /)
+  - codercraft.me is the custom domain of iSuthar.github.io; DNS is right, but GitHub has
+    no HTTPS cert for it (https_certificate null) -> https:// fails. Fix: re-save the custom
+    domain in iSuthar.github.io Settings > Pages (brief downtime), wait for cert, tick Enforce HTTPS.
+    Until then native share falls back to download (share needs https).
 - [ ] GoatCounter: Ankit signs up at goatcounter.com, gives site code -> set GOATCOUNTER_CODE
 - [ ] Get 5 strangers to type a page
 - Ideas parked: ghost caret of your past pace, focus mode, more books (Gatsby, Dracula,
