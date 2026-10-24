@@ -21,7 +21,7 @@ const GOALS = [1, 3, 5, 10]; // daily page goal choices
 const MIN_RESULT_CHARS = 100; // chapters typed less than this skip the results screen
 const JSZIP_URL = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
 // Analytics: sign up at goatcounter.com, put your site code here (e.g. "booktype").
-const GOATCOUNTER_CODE = "";
+const GOATCOUNTER_CODE = "isuthar";
 
 const S = {
   book: null,

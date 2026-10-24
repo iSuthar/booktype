@@ -53,7 +53,7 @@ Read a book by typing it (monkeytype-style). Static site, no backend.
     no HTTPS cert for it (https_certificate null) -> https:// fails. Fix: re-save the custom
     domain in iSuthar.github.io Settings > Pages (brief downtime), wait for cert, tick Enforce HTTPS.
     Until then native share falls back to download (share needs https).
-- [ ] GoatCounter: Ankit signs up at goatcounter.com, gives site code -> set GOATCOUNTER_CODE
+- [x] GoatCounter on: dashboard https://isuthar.goatcounter.com/ (pageviews + events: open/page/goal/chapter/share/upload)
 - [ ] Get 5 strangers to type a page
 - Ideas parked: ghost caret of your past pace, focus mode, more books (Gatsby, Dracula,
   Metamorphosis, Dorian Gray, Jekyll & Hyde, Little Women, Art of War, Winnie-the-Pooh),
