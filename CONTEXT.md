@@ -53,6 +53,17 @@ Read a book by typing it (monkeytype-style). Static site, no backend.
     2027-01-22, GitHub auto-renews); Enforce HTTPS on for both repos.
 - [x] GoatCounter on: dashboard https://isuthar.goatcounter.com/ (pageviews + events: open/page/goal/chapter/share/upload)
 - [ ] Get 5 strangers to type a page
+- [x] v2 (2026-10-25): monkeytype-style redesign
+  - layout: logo + nav (library, streak), config pill bar (book/chapter, mistakes, goal, font),
+    live stats, 4-line text box, footer key hints + theme switcher
+  - themes: serika dark (default), serika, nord, dracula, paper, matrix (THEMES in app.js, vars in style.css)
+  - fonts: Lexend Deca UI, Roboto Mono typing (serif = Literata option)
+  - typing: focus mode (UI fades while typing, mouse brings back), caret locked to line 2 with
+    whole-line scrolling, red underline on words with mistakes, live wpm hidden for first 2 s,
+    keys pressed while input unfocused are still typed, autocorrect replacements ignored
+  - fixed Tab "letters scatter": char class `done` collided with the `.done` screen CSS -> renamed `read`
+  - results screen restyled (big wpm/acc + chart, small stats row)
+- Test note: when driving the page in tests, type from S.k (resume point), not from chars[0].
 - Ideas parked: ghost caret of your past pace, focus mode, more books (Gatsby, Dracula,
   Metamorphosis, Dorian Gray, Jekyll & Hyde, Little Women, Art of War, Winnie-the-Pooh),
   instant start for new visitors, themes, IndexedDB for big uploads

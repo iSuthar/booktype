@@ -1,85 +1,145 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="serika-dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>booktype</title>
   <meta name="description" content="Read a book by typing it. Monkeytype-style typing practice with real books." />
+  <script>
+    try { document.documentElement.dataset.theme = JSON.parse(localStorage.getItem("bt:theme")) || "serika-dark"; } catch {}
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Literata:opsz,wght@7..72,400;7..72,600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@400;600&family=Roboto+Mono:wght@400;600&family=Literata:opsz,wght@7..72,400;7..72,600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+<div class="page">
   <header class="top">
-    <button class="logo" id="logo" title="Library (esc)">book<span>type</span></button>
-    <div class="bookinfo" id="bookinfo" hidden>
-      <span class="booktitle" id="booktitle"></span>
-      <select id="chapter" aria-label="Chapter"></select>
-    </div>
+    <button class="logo" id="logo" title="library (esc)">
+      <span class="tagline">read by typing</span>
+      <span class="name">book<b>type</b></span>
+    </button>
+    <nav class="nav">
+      <button class="icon" id="nav-library" title="library">
+        <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      </button>
+      <span class="streak" id="nav-streak" title="day streak">
+        <svg viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+        <b id="s-streak">0</b>
+      </span>
+    </nav>
   </header>
+
+  <!-- Typing -->
+  <main id="reader" class="reader" hidden>
+    <div class="config" id="config">
+      <div class="group book">
+        <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        <span id="booktitle"></span>
+        <select id="chapter" aria-label="Chapter"></select>
+      </div>
+      <i class="sep"></i>
+      <div class="group" data-opt="strict" title="what a wrong key does">
+        <button data-v="false">continue</button><button data-v="true">stop on error</button>
+      </div>
+      <i class="sep"></i>
+      <div class="group" data-opt="goal" title="daily goal (pages)">
+        <span class="lbl">goal</span>
+        <button data-v="1">1</button><button data-v="3">3</button><button data-v="5">5</button><button data-v="10">10</button>
+      </div>
+      <i class="sep"></i>
+      <div class="group" data-opt="font">
+        <button data-v="mono">mono</button><button data-v="book">serif</button>
+      </div>
+    </div>
+
+    <div class="live" id="live">
+      <span><b id="s-wpm">0</b>wpm</span>
+      <span><b id="s-acc">100%</b>acc</span>
+      <span><b id="s-prog">0%</b>book</span>
+      <span><b id="s-pages">0/3</b><em id="s-pages-l">pages today</em></span>
+    </div>
+    <div class="textwrap">
+      <div id="text" class="text"></div>
+      <div id="blurred" class="blurred">
+        <svg viewBox="0 0 24 24"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+        Click here or press any key to focus
+      </div>
+    </div>
+    <div class="under">
+      <button class="icon" id="skip" title="skip paragraph (tab)">
+        <svg viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" x2="19" y1="5" y2="19"/></svg>
+      </button>
+    </div>
+  </main>
 
   <!-- Library -->
   <main id="library" class="library" hidden>
-    <h1>Pick a book. Read it with your fingers.</h1>
-    <p class="streakline" id="streakline"></p>
+    <div class="libhead">
+      <h1>library</h1>
+      <p class="streakline" id="streakline"></p>
+    </div>
     <div class="grid" id="grid"></div>
     <p class="note">Bundled books are public domain (Project Gutenberg).
       Books you open stay in your browser and are never uploaded.</p>
   </main>
 
-  <!-- Typing -->
-  <main id="reader" class="reader" hidden>
-    <div class="stats" id="stats">
-      <div><b id="s-wpm">0</b><span>wpm</span></div>
-      <div><b id="s-acc">100%</b><span>acc</span></div>
-      <div><b id="s-prog">0%</b><span>book</span></div>
-      <div><b id="s-pages">0/3</b><span id="s-pages-l">pages today</span></div>
-      <div><b id="s-streak">0</b><span>day streak</span></div>
-    </div>
-    <div class="textwrap">
-      <div id="text" class="text" aria-live="off"></div>
-      <div id="blurred" class="blurred">click or press any key to keep reading</div>
-    </div>
-    <div class="hints">
-      <span><kbd>enter</kbd> or <kbd>space</kbd> ends a paragraph</span>
-      <span><kbd>tab</kbd> skip paragraph</span>
-      <span><kbd>esc</kbd> library</span>
-      <button id="opt-strict" class="opt"></button>
-      <button id="opt-font" class="opt"></button>
-      <button id="opt-goal" class="opt"></button>
-    </div>
-  </main>
-
   <!-- Chapter results -->
   <main id="results" class="results" hidden>
-    <p class="eyebrow" id="r-book"></p>
-    <h1 id="r-title"></h1>
-    <div class="tiles" id="r-tiles"></div>
-    <section id="r-chart-wrap">
-      <h3>Speed through the chapter <span>words per minute, each paragraph</span></h3>
-      <div class="chart" id="r-chart" role="img">
-        <canvas id="r-canvas"></canvas>
-        <div class="tip" id="r-tip" hidden></div>
+    <div class="rtop">
+      <div class="big">
+        <div><span>wpm</span><b id="r-wpm">0</b></div>
+        <div><span>acc</span><b id="r-acc">0%</b></div>
       </div>
-    </section>
+      <div class="chartbox" id="r-chart-wrap">
+        <div class="chart" id="r-chart" role="img">
+          <canvas id="r-canvas"></canvas>
+          <div class="tip" id="r-tip" hidden></div>
+        </div>
+      </div>
+    </div>
+    <div class="more" id="r-more"></div>
     <section id="r-slow-wrap">
-      <h3>Slowest words <span>practise these</span></h3>
+      <h3>slowest words</h3>
       <div class="chips" id="r-slow"></div>
     </section>
     <div class="actions">
-      <button class="btn" id="r-next">Next chapter →</button>
-      <button class="btn ghost" id="r-share">Share image</button>
+      <button class="icon wide" id="r-next" title="next chapter (enter)">
+        <svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        <span id="r-next-l">next chapter</span>
+      </button>
+      <button class="icon wide" id="r-share" title="share image">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></svg>
+        <span>share image</span>
+      </button>
     </div>
-    <p class="hints"><span><kbd>enter</kbd> continue</span><span><kbd>esc</kbd> library</span></p>
   </main>
 
   <!-- Finished book -->
-  <main id="done" class="done" hidden>
+  <main id="done" class="finished" hidden>
     <h1>The end.</h1>
     <p id="done-text"></p>
-    <button class="btn" id="done-back">Back to library</button>
+    <button class="icon wide" id="done-back"><span>back to library</span></button>
   </main>
+
+  <footer class="foot">
+    <div class="keys" id="keys">
+      <span><kbd>tab</kbd> - skip paragraph</span>
+      <span><kbd>esc</kbd> - library</span>
+      <span><kbd>enter</kbd> or <kbd>space</kbd> - end paragraph</span>
+    </div>
+    <div class="bottom">
+      <div class="links">
+        <a href="https://github.com/iSuthar/booktype" target="_blank" rel="noopener">github</a>
+      </div>
+      <button class="themebtn" id="theme-btn" title="change theme">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg>
+        <span id="theme-name"></span>
+      </button>
+    </div>
+  </footer>
+</div>
 
   <textarea id="input" class="hidden-input" autocomplete="off" autocapitalize="off"
     autocorrect="off" spellcheck="false" aria-label="Typing input"></textarea>

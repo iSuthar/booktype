@@ -17,7 +17,8 @@ const store = {
 
 const PAGE_CHARS = 650; // target typed characters per page
 const IDLE_MS = 4000;   // pauses longer than this (reading, thinking) don't count against WPM
-const GOALS = [1, 3, 5, 10]; // daily page goal choices
+const THEMES = ["serika-dark", "serika", "nord", "dracula", "paper", "matrix"];
+const MIN_WPM_MS = 2000; // don't show live wpm until this much typing time (avoids silly first numbers)
 const MIN_RESULT_CHARS = 100; // chapters typed less than this skip the results screen
 const JSZIP_URL = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
 // Analytics: sign up at goatcounter.com, put your site code here (e.g. "booktype").
@@ -37,7 +38,8 @@ const S = {
   p0: null,             // chapter snapshot at paragraph start
   w0: null,             // { ms, k, clean } at word start
   strict: store.get("strict", false),
-  font: store.get("font", "book"),
+  font: store.get("font", "mono"),
+  theme: store.get("theme", "serika-dark"),
   goal: store.get("goal", 3),
 };
 
@@ -186,7 +188,7 @@ function showLibrary() {
   savePos();
   saveChap();
   show("library");
-  $("#bookinfo").hidden = true;
+  updateStreak();
   const st = streak(), today = pagesToday();
   $("#streakline").textContent =
     (st ? `${st}-day streak · ` : "") + `${Math.min(today, S.goal)}/${S.goal} pages today` +
@@ -259,8 +261,6 @@ async function openBook(id) {
   sel.innerHTML = "";
   sel.hidden = !book.chapters.length;
   for (const ch of book.chapters) sel.append(new Option(ch.title, ch.p));
-  $("#bookinfo").hidden = false;
-
   track("open");
   show("reader");
   loadPage();
@@ -324,7 +324,9 @@ function loadPage() {
     S.chars.push({ ch: "\n", p: i, i: ci, el: nl });
     text.append(pe);
   }
-  text.append(el("div", null)); // spacer so the last line can scroll up
+  const spacer = el("div"); // room below the last line so it can scroll up to line 2
+  spacer.style.height = "calc(var(--lh) * (var(--lines) - 1))";
+  text.append(spacer);
   const caret = el("div");
   caret.id = "caret";
   text.append(caret);
@@ -332,7 +334,7 @@ function loadPage() {
   // resume mid-paragraph: earlier letters show as already read
   S.k = S.chars.findIndex((c) => c.p > S.pos.p || (c.p === S.pos.p && c.i >= S.pos.c));
   if (S.k < 0) S.k = 0;
-  for (let j = 0; j < S.k; j++) S.chars[j].el.classList.add("done");
+  for (let j = 0; j < S.k; j++) S.chars[j].el.classList.add("read");
   S.minK = S.k;
   S.pageStart = { ...S.session };
   S.p0 = { chars: S.chap.chars, ms: S.chap.ms };
@@ -345,29 +347,32 @@ function loadPage() {
   focusInput();
 }
 
+// Lines in the text box are all exactly --lh tall, so the caret's line is
+// found by rounding, and the box scrolls a whole line at a time.
 function moveCaret(instant) {
   const c = S.chars[S.k];
   const caret = $("#caret");
   if (!c || !caret) return;
-  const e = c.el;
+  const e = c.el, box = $("#text");
+  const L = parseFloat(getComputedStyle(box).lineHeight);
+  const fs = parseFloat(getComputedStyle(box).fontSize);
+  const lineTop = Math.floor((e.offsetTop + e.offsetHeight / 2) / L) * L;
+  const h = fs * 1.15;
   if (instant) caret.style.transition = "none";
-  caret.style.transform = `translate(${e.offsetLeft - 1}px, ${e.offsetTop + e.offsetHeight * 0.12}px)`;
-  caret.style.height = e.offsetHeight * 0.76 + "px";
+  caret.style.transform = `translate(${e.offsetLeft - 1}px, ${lineTop + (L - h) / 2}px)`;
+  caret.style.height = h + "px";
   if (instant) { void caret.offsetWidth; caret.style.transition = ""; }
 
-  // keep the caret on the third visible line
-  const box = $("#text");
-  const target = Math.max(0, e.offsetTop - e.offsetHeight * 2);
-  if (Math.abs(box.scrollTop - target) > e.offsetHeight * 0.5) {
-    box.scrollTo({ top: target, behavior: instant ? "auto" : "smooth" });
-  }
+  // keep the caret on the second visible line
+  const target = Math.max(0, lineTop - L);
+  if (Math.abs(box.scrollTop - target) > 1) box.scrollTo({ top: target, behavior: instant ? "auto" : "smooth" });
 }
 
 function tick() {
   const now = performance.now();
   if (S.last && now - S.last < IDLE_MS) add("ms", now - S.last);
   S.last = now;
-  document.body.classList.add("typing");
+  document.body.classList.add("typing", "focus");
   clearTimeout(tick.t);
   tick.t = setTimeout(() => document.body.classList.remove("typing"), 600);
 }
@@ -419,6 +424,7 @@ function skipWord() {
 
 function afterAdvance(cur, ok) {
   if (isBreak(cur)) {
+    markWord(S.k - 2);
     if (ok) endWord();
     if (cur.ch === "\n") endParagraph();
     S.w0 = { ms: S.chap.ms, k: S.k, clean: true };
@@ -427,6 +433,15 @@ function afterAdvance(cur, ok) {
   if (S.k >= S.chars.length) return finishPage();
   moveCaret();
   updateStats();
+}
+
+// underline the word ending at index j if any of its letters are wrong (monkeytype style)
+function markWord(j) {
+  const end = S.chars[j];
+  if (!end || isBreak(end)) return;
+  let bad = false;
+  for (; j >= 0 && !isBreak(S.chars[j]); j--) if (S.chars[j].el.classList.contains("err")) bad = true;
+  end.el.parentElement.classList.toggle("werr", bad);
 }
 
 // record how fast the word just finished was typed (only clean, uncorrected words)
@@ -457,6 +472,7 @@ function backspace(word) {
     if (c.typed !== undefined && isMatch(c.ch, c.typed)) add("chars", -1);
     c.typed = undefined;
     c.el.classList.remove("ok", "err", "miss");
+    c.el.parentElement.classList.remove("werr");
   } while (word && S.k > S.minK && !isBreak(S.chars[S.k - 1]));
   moveCaret();
   updateStats();
@@ -467,7 +483,7 @@ function skipParagraph() {
   if (!cur) return;
   if (cur.p + 1 >= S.page.end) return advance(cur.p + 1);
   // jump the caret to the next paragraph on this page, marking the skipped part as read
-  while (S.k < S.chars.length && S.chars[S.k].p === cur.p) S.chars[S.k++].el.classList.add("done");
+  while (S.k < S.chars.length && S.chars[S.k].p === cur.p) S.chars[S.k++].el.classList.add("read");
   S.minK = S.k;
   S.p0 = { chars: S.chap.chars, ms: S.chap.ms };
   S.w0 = { ms: S.chap.ms, k: S.k, clean: true };
@@ -516,8 +532,8 @@ function finishPage() {
   if (addPage()) {
     const st = streak();
     toast(`Daily goal done! ${st}-day streak`, 4500);
-    $("#stats").classList.add("celebrate");
-    setTimeout(() => $("#stats").classList.remove("celebrate"), 1200);
+    $("#live").classList.add("pop");
+    setTimeout(() => $("#live").classList.remove("pop"), 1200);
     track("goal");
   } else {
     toast(`page done · ${pw} wpm · ${pa}% acc`);
@@ -535,7 +551,7 @@ function finishBook() {
 
 function updateStats() {
   const s = S.session;
-  $("#s-wpm").textContent = wpm(s.chars, s.ms);
+  $("#s-wpm").textContent = s.ms >= MIN_WPM_MS ? wpm(s.chars, s.ms) : "-";
   $("#s-acc").textContent = acc(s.correct, s.keys) + "%";
   const c = S.chars[S.k];
   const pos = c ? S.book.cum[c.p] + c.i : S.book.cum[S.page.end];
@@ -543,7 +559,14 @@ function updateStats() {
   const today = pagesToday();
   $("#s-pages").textContent = `${Math.min(today, S.goal)}/${S.goal}`;
   $("#s-pages-l").textContent = today >= S.goal ? "goal done" : "pages today";
-  $("#s-streak").textContent = streak();
+  updateStreak();
+}
+
+function updateStreak() {
+  const st = streak();
+  $("#s-streak").textContent = st;
+  $("#nav-streak").classList.toggle("on", st > 0);
+  $("#nav-streak").title = `${st}-day streak (goal: ${S.goal} page${S.goal === 1 ? "" : "s"} a day)`;
 }
 
 // ---------- chapter results ----------
@@ -561,22 +584,20 @@ function showResults(bookEnd) {
   const ch = S.chap;
   track("chapter");
   show("results");
-  $("#r-book").textContent = S.book.title;
-  $("#r-title").textContent = ch.title;
-
-  const tiles = $("#r-tiles");
-  tiles.innerHTML = "";
+  $("#r-wpm").textContent = wpm(ch.chars, ch.ms);
+  $("#r-acc").textContent = acc(ch.correct, ch.keys) + "%";
+  const more = $("#r-more");
+  more.innerHTML = "";
   const st = streak();
-  for (const [v, l] of [
-    [wpm(ch.chars, ch.ms), "wpm"],
-    [acc(ch.correct, ch.keys) + "%", "accuracy"],
-    [fmtTime(ch.ms), "typing time"],
-    [ch.chars.toLocaleString(), "characters"],
-    [st, st === 1 ? "day streak" : "days streak"],
+  for (const [l, v, cls] of [
+    ["chapter", ch.title, "title"],
+    ["time", fmtTime(ch.ms)],
+    ["characters", ch.chars.toLocaleString()],
+    ["streak", `${st} day${st === 1 ? "" : "s"}`],
   ]) {
-    const t = el("div", "tile");
-    t.append(el("b", null, String(v)), el("span", null, l));
-    tiles.append(t);
+    const d = el("div", cls);
+    d.append(el("span", null, l), el("b", null, String(v)));
+    more.append(d);
   }
 
   const chartWrap = $("#r-chart-wrap");
@@ -598,7 +619,7 @@ function showResults(bookEnd) {
     box.append(chip);
   }
 
-  $("#r-next").textContent = bookEnd ? "Finish book →" : "Next chapter →";
+  $("#r-next-l").textContent = bookEnd ? "finish book" : "next chapter";
   $("#r-next").focus();
 }
 
@@ -634,14 +655,14 @@ function drawChart(hover) {
   g.lineWidth = 1;
   for (let val = 0; val <= max; val += step) {
     const yy = Math.round(y(val)) + 0.5;
-    g.strokeStyle = v("--line");
+    g.strokeStyle = v("--sub-alt");
     g.beginPath(); g.moveTo(pad.l, yy); g.lineTo(W - pad.r, yy); g.stroke();
     g.fillStyle = v("--sub");
     g.textAlign = "right"; g.textBaseline = "middle";
     g.fillText(String(val), pad.l - 8, yy);
   }
   g.textBaseline = "alphabetic";
-  g.textAlign = "left"; g.fillText("start of chapter", pad.l, H - 4);
+  g.textAlign = "left"; g.fillText("start of chapter (wpm per paragraph)", pad.l, H - 4);
   g.textAlign = "right"; g.fillText("end", W - pad.r, H - 4);
 
   if (hover >= 0) {
@@ -686,19 +707,21 @@ function chartHover(e) {
 // 1200x630 image for sharing (fits X, WhatsApp, Instagram stories crop).
 async function shareCard() {
   const ch = S.chap;
-  const C = { bg: "#2b2d31", text: "#e3e1d9", sub: "#8d9097", main: "#e2b714" };
+  const css = getComputedStyle(document.documentElement);
+  const v = (n) => css.getPropertyValue(n).trim();
+  const C = { bg: v("--bg"), text: v("--text"), sub: v("--sub"), main: v("--main") };
   await Promise.all([
     document.fonts.load('600 64px "Literata"'), document.fonts.load('400 30px "Literata"'),
-    document.fonts.load('600 40px "JetBrains Mono"'),
+    document.fonts.load('400 40px "Lexend Deca"'), document.fonts.load('400 76px "Roboto Mono"'),
   ]).catch(() => {});
   const c = document.createElement("canvas");
   c.width = 1200; c.height = 630;
   const g = c.getContext("2d");
-  const serif = '"Literata", Georgia, serif', mono = '"JetBrains Mono", Menlo, monospace';
+  const serif = '"Literata", Georgia, serif', mono = '"Roboto Mono", Menlo, monospace', ui = '"Lexend Deca", sans-serif';
   const fit = (s, w) => { while (g.measureText(s).width > w && s.length > 4) s = s.slice(0, -2).trimEnd() + "…"; return s.replace(/…+$/, "…"); };
 
   g.fillStyle = C.bg; g.fillRect(0, 0, 1200, 630);
-  g.font = `600 40px ${mono}`; g.textBaseline = "alphabetic";
+  g.font = `400 44px ${ui}`; g.textBaseline = "alphabetic";
   g.fillStyle = C.text; g.fillText("book", 80, 110);
   g.fillStyle = C.main; g.fillText("type", 80 + g.measureText("book").width, 110);
   const host = /^(localhost|127\.)/.test(location.hostname) || !location.hostname ? "" : location.hostname;
@@ -713,7 +736,7 @@ async function shareCard() {
 
   let x = 80;
   for (const [val, label] of [[wpm(ch.chars, ch.ms), "wpm"], [acc(ch.correct, ch.keys) + "%", "accuracy"], [fmtTime(ch.ms), "time"]]) {
-    g.font = `600 76px ${mono}`; g.fillStyle = C.main;
+    g.font = `400 76px ${mono}`; g.fillStyle = C.main;
     g.fillText(String(val), x, 470);
     const w = g.measureText(String(val)).width;
     g.font = `400 26px ${mono}`; g.fillStyle = C.sub;
@@ -764,9 +787,9 @@ input.addEventListener("beforeinput", (e) => {
   if ($("#reader").hidden) return;
   switch (e.inputType) {
     case "insertText":
-    case "insertReplacementText":
       for (const ch of e.data || "") typeChar(ch);
       break;
+    // insertReplacementText (autocorrect, smart quotes) is ignored: it rewrites a whole word
     case "insertLineBreak":
     case "insertParagraph":
       typeChar("\n");
@@ -803,11 +826,28 @@ document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") showLibrary();
     return;
   }
-  if (!$("#reader").hidden) focusInput();
-  else if (e.key === "Escape" && S.book && !$("#library").hidden) openBook(S.book.id);
+  if (!$("#reader").hidden) {
+    // input wasn't focused (e.g. after clicking a setting): focus it and keep this keystroke
+    focusInput();
+    if (e.key.length === 1 || e.key === "Enter") {
+      e.preventDefault();
+      typeChar(e.key === "Enter" ? "\n" : e.key);
+    } else if (e.key === "Tab") {
+      e.preventDefault();
+      skipParagraph();
+    }
+  } else if (e.key === "Escape" && S.book && !$("#library").hidden) openBook(S.book.id);
 });
 
 $("#text").addEventListener("click", focusInput);
+$("#skip").addEventListener("click", () => { skipParagraph(); focusInput(); });
+$("#nav-library").addEventListener("click", showLibrary);
+// moving the mouse brings the hidden UI back (focus mode)
+let mouseAt = null;
+document.addEventListener("mousemove", (e) => {
+  if (mouseAt && Math.abs(e.clientX - mouseAt[0]) + Math.abs(e.clientY - mouseAt[1]) > 4) document.body.classList.remove("focus");
+  mouseAt = [e.clientX, e.clientY];
+});
 $("#blurred").addEventListener("click", focusInput);
 $("#logo").addEventListener("click", showLibrary);
 $("#done-back").addEventListener("click", showLibrary);
@@ -839,30 +879,33 @@ document.fonts?.ready.then(() => moveCaret(true));
 // ---------- options ----------
 
 function renderOptions() {
-  $("#opt-strict").textContent = S.strict ? "mistakes: stop" : "mistakes: continue";
-  $("#opt-strict").title = S.strict ? "Wrong keys don't advance" : "Wrong keys advance, marked red";
-  $("#opt-font").textContent = S.font === "mono" ? "font: mono" : "font: book";
-  $("#opt-goal").textContent = `goal: ${S.goal} page${S.goal === 1 ? "" : "s"}/day`;
-  document.body.classList.toggle("mono", S.font === "mono");
+  const values = { strict: String(S.strict), goal: String(S.goal), font: S.font };
+  for (const g of document.querySelectorAll("#config [data-opt]")) {
+    for (const b of g.querySelectorAll("button")) b.classList.toggle("on", b.dataset.v === values[g.dataset.opt]);
+  }
+  document.body.classList.toggle("serif", S.font === "book");
+  document.documentElement.dataset.theme = S.theme;
+  $("#theme-name").textContent = S.theme.replace("-", " ");
 }
-$("#opt-strict").addEventListener("click", () => {
-  S.strict = !S.strict;
-  store.set("strict", S.strict);
+
+$("#config").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-opt] button");
+  if (!b) return;
+  const opt = b.parentElement.dataset.opt, v = b.dataset.v;
+  if (opt === "strict") S.strict = v === "true";
+  if (opt === "goal") S.goal = +v;
+  if (opt === "font") S.font = v;
+  store.set(opt, S[opt]);
   renderOptions();
+  if (S.book && !$("#reader").hidden) { moveCaret(true); updateStats(); }
   focusInput();
 });
-$("#opt-font").addEventListener("click", () => {
-  S.font = S.font === "mono" ? "book" : "mono";
-  store.set("font", S.font);
+
+$("#theme-btn").addEventListener("click", () => {
+  S.theme = THEMES[(THEMES.indexOf(S.theme) + 1) % THEMES.length];
+  store.set("theme", S.theme);
   renderOptions();
-  moveCaret(true);
-  focusInput();
-});
-$("#opt-goal").addEventListener("click", () => {
-  S.goal = GOALS[(GOALS.indexOf(S.goal) + 1) % GOALS.length];
-  store.set("goal", S.goal);
-  renderOptions();
-  updateStats();
+  if (!$("#results").hidden) drawChart(-1);
   focusInput();
 });
 
