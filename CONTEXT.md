@@ -63,6 +63,16 @@ Read a book by typing it (monkeytype-style). Static site, no backend.
     keys pressed while input unfocused are still typed, autocorrect replacements ignored
   - fixed Tab "letters scatter": char class `done` collided with the `.done` screen CSS -> renamed `read`
   - results screen restyled (big wpm/acc + chart, small stats row)
+- [x] v2.1 (2026-10-26), from a first-visit UX review:
+  - first visit (no `bt:last`) opens Alice ch.1 straight away with a "just start typing" hint (FIRST_BOOK in app.js)
+  - book % counts from chapter 1 (front matter excluded): pctAt() in app.js
+  - chapter names normalised by chapterTitle() in parse.js ("CHAPTER XIII" -> "Chapter 13", caps titles -> Title Case)
+  - text box 5 lines on desktop; on a page's first text line the box doesn't scroll, so headings stay visible
+  - wrong-key / goal / font moved into a settings popover (sliders icon); bar keeps book + chapter only
+  - input blur ends focus mode (phones have no mousemove to bring the UI back)
+  - Review ideas not done yet: hide "0/3 pages today" before first page, upload card last, card length
+    as "N chapters · ~h", "page x/y" in chapter, fewer/dimmer live stats, no tab/esc hints on phones,
+    check phone keyboard covering the text on a real phone
 - Test note: when driving the page in tests, type from S.k (resume point), not from chars[0].
 - Ideas parked: ghost caret of your past pace, focus mode, more books (Gatsby, Dracula,
   Metamorphosis, Dorian Gray, Jekyll & Hyde, Little Women, Art of War, Winnie-the-Pooh),

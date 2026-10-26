@@ -114,4 +114,28 @@ function finalize(paras) {
   return { paras, chapters, startP: first ? first.p : Math.max(0, firstText) };
 }
 
-if (typeof module !== "undefined") module.exports = { parsePlainText, cleanPara, finalize };
+// "CHAPTER XIII" / "Chapter I." / "IV. THE BOSCOMBE VALLEY MYSTERY" -> "Chapter 13" / "Chapter 1" / "Chapter 4: The Boscombe Valley Mystery"
+const ROMAN = { i: 1, v: 5, x: 10, l: 50, c: 100, d: 500, m: 1000 };
+function fromRoman(s) {
+  let n = 0;
+  for (let i = 0; i < s.length; i++) {
+    const v = ROMAN[s[i]], next = ROMAN[s[i + 1]] || 0;
+    n += v < next ? -v : v;
+  }
+  return n;
+}
+const SMALL_WORDS = /^(a|an|and|at|by|for|in|of|on|or|the|to|with)$/;
+function titleCase(s) {
+  if (/[a-z]/.test(s)) return s; // already mixed case: keep the author's casing
+  return s.toLowerCase().replace(/[a-z][\w'-]*/g, (w, i) => (i && SMALL_WORDS.test(w) ? w : w[0].toUpperCase() + w.slice(1)));
+}
+function chapterTitle(t) {
+  const m = t.match(/^(?:(chapter|letter|book|part|stave|volume|adventure)\s+)?([ivxlcdm]+|\d+)\b\.?\s*(.*)$/i);
+  if (!m || (!m[1] && !/^[ivxlc]+\./i.test(t))) return titleCase(t);
+  const word = m[1] ? m[1][0].toUpperCase() + m[1].slice(1).toLowerCase() : "Chapter";
+  const n = /^\d+$/.test(m[2]) ? +m[2] : fromRoman(m[2].toLowerCase());
+  const rest = m[3].replace(/^[-:.\s]+/, "");
+  return `${word} ${n}` + (rest ? ": " + titleCase(rest) : "");
+}
+
+if (typeof module !== "undefined") module.exports = { parsePlainText, cleanPara, finalize, chapterTitle };

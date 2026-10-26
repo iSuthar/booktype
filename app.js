@@ -23,6 +23,7 @@ const MIN_RESULT_CHARS = 100; // chapters typed less than this skip the results 
 const JSZIP_URL = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
 // Analytics: sign up at goatcounter.com, put your site code here (e.g. "booktype").
 const GOATCOUNTER_CODE = "isuthar";
+const FIRST_BOOK = "alice"; // opened on a first visit
 
 const S = {
   book: null,
@@ -131,7 +132,9 @@ function addPage() {
 // ---------- books ----------
 
 function prepare(id, title, author, parsed) {
-  const { paras, chapters, startP } = parsed;
+  const { paras, startP } = parsed;
+  const chapters = parsed.chapters.map((c) => ({ ...c, title: chapterTitle(c.title) }));
+  for (const c of chapters) paras[c.p] = { ...paras[c.p], t: c.title };
   const cum = [0];
   for (const p of paras) cum.push(cum.at(-1) + (p.h ? 0 : p.t.length));
   return { id, title, author, paras, chapters, startP, cum, total: cum.at(-1) };
@@ -185,6 +188,7 @@ async function openFile(file) {
 function progressOf(id) { return store.get("progress:" + id); }
 
 function showLibrary() {
+  closeSettings();
   savePos();
   saveChap();
   show("library");
@@ -227,6 +231,12 @@ function show(view) {
 }
 
 // ---------- reading ----------
+
+// % of the book read at paragraph p, character c (front matter before chapter 1 doesn't count)
+function pctAt(p, c) {
+  const b = S.book, s = b.cum[b.startP] || 0;
+  return b.total > s ? Math.max(0, ((b.cum[Math.min(p, b.paras.length)] + c - s) / (b.total - s)) * 100) : 0;
+}
 
 function chapterIdx(p) { return S.book.chapters.findLastIndex((c) => c.p <= p); }
 
@@ -364,7 +374,9 @@ function moveCaret(instant) {
   if (instant) { void caret.offsetWidth; caret.style.transition = ""; }
 
   // keep the caret on the second visible line
-  const target = Math.max(0, lineTop - L);
+  // (on the page's first text line, stay at the top so chapter headings above it stay visible)
+  const firstP = box.querySelector("p");
+  const target = firstP && lineTop <= firstP.offsetTop ? 0 : Math.max(0, lineTop - L);
   if (Math.abs(box.scrollTop - target) > 1) box.scrollTo({ top: target, behavior: instant ? "auto" : "smooth" });
 }
 
@@ -373,6 +385,8 @@ function tick() {
   if (S.last && now - S.last < IDLE_MS) add("ms", now - S.last);
   S.last = now;
   document.body.classList.add("typing", "focus");
+  closeSettings();
+  $("#hint").hidden = true;
   clearTimeout(tick.t);
   tick.t = setTimeout(() => document.body.classList.remove("typing"), 600);
 }
@@ -512,7 +526,7 @@ function savePos(exact) {
     if (c) S.pos = { p: c.p, c: c.i };
   }
   const prev = progressOf(S.book.id) || { chars: 0, ms: 0 };
-  const pct = S.book.total ? ((S.book.cum[Math.min(S.pos.p, S.book.paras.length)] + S.pos.c) / S.book.total) * 100 : 0;
+  const pct = pctAt(S.pos.p, S.pos.c);
   // lifetime stats: add what this session typed since the last save
   const base = savePos.base || (savePos.base = { chars: 0, ms: 0 });
   const rec = {
@@ -554,8 +568,7 @@ function updateStats() {
   $("#s-wpm").textContent = s.ms >= MIN_WPM_MS ? wpm(s.chars, s.ms) : "-";
   $("#s-acc").textContent = acc(s.correct, s.keys) + "%";
   const c = S.chars[S.k];
-  const pos = c ? S.book.cum[c.p] + c.i : S.book.cum[S.page.end];
-  $("#s-prog").textContent = ((pos / S.book.total) * 100).toFixed(1) + "%";
+  $("#s-prog").textContent = (c ? pctAt(c.p, c.i) : pctAt(S.page.end, 0)).toFixed(1) + "%";
   const today = pagesToday();
   $("#s-pages").textContent = `${Math.min(today, S.goal)}/${S.goal}`;
   $("#s-pages-l").textContent = today >= S.goal ? "goal done" : "pages today";
@@ -812,11 +825,12 @@ input.addEventListener("compositionend", (e) => {
 
 input.addEventListener("keydown", (e) => {
   if (e.key === "Tab") { e.preventDefault(); skipParagraph(); }
-  if (e.key === "Escape") { e.preventDefault(); showLibrary(); }
+  if (e.key === "Escape") { e.preventDefault(); if (!closeSettings()) showLibrary(); }
 });
 
 input.addEventListener("focus", () => $("#reader").classList.remove("unfocused"));
-input.addEventListener("blur", () => $("#reader").classList.add("unfocused"));
+// leaving the text (tap elsewhere, click a setting) brings the hidden UI back; phones have no mousemove
+input.addEventListener("blur", () => { $("#reader").classList.add("unfocused"); document.body.classList.remove("focus"); });
 
 document.addEventListener("keydown", (e) => {
   if (document.activeElement === input || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -827,6 +841,7 @@ document.addEventListener("keydown", (e) => {
     return;
   }
   if (!$("#reader").hidden) {
+    if (e.key === "Escape" && closeSettings()) return focusInput();
     // input wasn't focused (e.g. after clicking a setting): focus it and keep this keystroke
     focusInput();
     if (e.key.length === 1 || e.key === "Enter") {
@@ -901,6 +916,23 @@ $("#config").addEventListener("click", (e) => {
   focusInput();
 });
 
+// settings popover (wrong key / goal / font): you set these once, so they stay out of the way
+function closeSettings() {
+  if ($("#settings").hidden) return false;
+  $("#settings").hidden = true;
+  $("#gear").setAttribute("aria-expanded", "false");
+  return true;
+}
+$("#gear").addEventListener("click", () => {
+  if (closeSettings()) return focusInput();
+  $("#settings").hidden = false;
+  $("#gear").setAttribute("aria-expanded", "true");
+  focusInput(); // keep typing ready; the first key closes the panel
+});
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("#settings, #gear")) closeSettings();
+});
+
 $("#theme-btn").addEventListener("click", () => {
   S.theme = THEMES[(THEMES.indexOf(S.theme) + 1) % THEMES.length];
   store.set("theme", S.theme);
@@ -914,4 +946,8 @@ $("#theme-btn").addEventListener("click", () => {
 renderOptions();
 const lastBook = store.get("last");
 if (lastBook) openBook(lastBook).catch(showLibrary);
-else showLibrary();
+else {
+  // first visit: drop straight into a short book, like monkeytype drops you into a test
+  $("#hint").hidden = false;
+  openBook(FIRST_BOOK).catch(showLibrary);
+}

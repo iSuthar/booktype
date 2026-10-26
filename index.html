@@ -40,20 +40,27 @@
         <select id="chapter" aria-label="Chapter"></select>
       </div>
       <i class="sep"></i>
-      <div class="group" data-opt="strict" title="what a wrong key does">
-        <button data-v="false">continue</button><button data-v="true">stop on error</button>
-      </div>
-      <i class="sep"></i>
-      <div class="group" data-opt="goal" title="daily goal (pages)">
-        <span class="lbl">goal</span>
-        <button data-v="1">1</button><button data-v="3">3</button><button data-v="5">5</button><button data-v="10">10</button>
-      </div>
-      <i class="sep"></i>
-      <div class="group" data-opt="font">
-        <button data-v="mono">mono</button><button data-v="book">serif</button>
+      <button class="icon gear" id="gear" title="settings" aria-expanded="false" aria-controls="settings">
+        <svg viewBox="0 0 24 24"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg>
+      </button>
+      <div class="settings" id="settings" hidden>
+        <span class="lbl">wrong key</span>
+        <div class="group" data-opt="strict">
+          <button data-v="false">keep going</button><button data-v="true">stop until fixed</button>
+        </div>
+        <span class="lbl">daily goal</span>
+        <div class="group" data-opt="goal">
+          <button data-v="1">1</button><button data-v="3">3</button><button data-v="5">5</button><button data-v="10">10</button>
+          <span class="unit">pages</span>
+        </div>
+        <span class="lbl">font</span>
+        <div class="group" data-opt="font">
+          <button data-v="mono">mono</button><button data-v="book">serif</button>
+        </div>
       </div>
     </div>
 
+    <p class="hint" id="hint" hidden>just start typing. you read the book as you type it.</p>
     <div class="live" id="live">
       <span><b id="s-wpm">0</b>wpm</span>
       <span><b id="s-acc">100%</b>acc</span>

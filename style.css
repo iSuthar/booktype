@@ -35,7 +35,7 @@
   --font-book: "Literata", Georgia, serif;
   --fs: 28px;                       /* typing text size */
   --lh: calc(var(--fs) * 1.6);      /* one line; everything in the text box is a multiple */
-  --lines: 4;
+  --lines: 5;
   --radius: 8px;
   --t: .125s;
 }
@@ -87,7 +87,7 @@ body.focus { cursor: none; }
 
 /* ---------- config bar ---------- */
 .config {
-  justify-self: center; display: flex; align-items: center; flex-wrap: wrap; justify-content: center;
+  position: relative; align-self: center; display: flex; align-items: center; flex-wrap: wrap; justify-content: center;
   gap: 4px 0; background: var(--sub-alt); border-radius: var(--radius);
   padding: 6px 12px; font-size: 13px; color: var(--sub); max-width: 100%;
 }
@@ -99,10 +99,22 @@ body.focus { cursor: none; }
 .config .sep { width: 4px; height: 18px; border-radius: 2px; background: var(--bg); margin: 0 6px; }
 .config .book { gap: 8px; }
 .config .book svg { font-size: 14px; }
-#booktitle { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; color: var(--text); }
+#booktitle { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; color: var(--text); }
+.config .gear { font-size: 16px; padding: 4px 6px; }
+.config .gear[aria-expanded="true"] { color: var(--main); }
+/* settings popover: options you set once, kept out of the way */
+.settings {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 5;
+  display: grid; grid-template-columns: auto auto; align-items: center; gap: 6px 10px;
+  background: var(--sub-alt); border-radius: var(--radius); padding: 12px 14px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / .25); white-space: nowrap;
+}
+.settings .lbl { padding: 4px 0; }
+.settings .group { padding: 0; }
+.settings .unit { padding: 4px 0 4px 4px; }
 select {
   appearance: none; -webkit-appearance: none; background: var(--bg); color: var(--sub);
-  border: 0; border-radius: 6px; padding: 4px 10px; font: inherit; max-width: 200px; cursor: pointer;
+  border: 0; border-radius: 6px; padding: 4px 10px; font: inherit; max-width: 300px; cursor: pointer;
 }
 select:hover { color: var(--text); }
 
@@ -114,6 +126,7 @@ select:hover { color: var(--text); }
 .live .pop b { animation: pop .6s ease-out; display: inline-block; }
 @keyframes pop { 30% { transform: scale(1.3); } }
 
+.hint { margin: 0; text-align: center; color: var(--main); font-size: 15px; }
 .textwrap { position: relative; }
 .text {
   position: relative;
@@ -245,8 +258,10 @@ kbd {
   .logo .name { font-size: 26px; }
   .config { font-size: 12px; padding: 6px; }
   .config .sep { display: none; }
-  .config .book { flex-basis: 100%; justify-content: center; }
-  #booktitle { max-width: 45%; }
+  .config { flex-wrap: nowrap; max-width: 100%; }
+  .config .book { flex: 0 1 auto; }
+  #booktitle { max-width: 40vw; }
+  .settings { right: -6px; }
   select { min-width: 0; flex: 0 1 auto; }
   .live { gap: 14px; font-size: 12px; }
   .live b { font-size: 18px; }
