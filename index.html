@@ -16,7 +16,7 @@
 <body>
 <div class="page">
   <header class="top">
-    <button class="logo" id="logo" title="library (esc)">
+    <button class="logo" id="logo" title="library">
       <span class="tagline">read by typing</span>
       <span class="name">book<b>type</b></span>
     </button>
@@ -33,17 +33,31 @@
 
   <!-- Typing -->
   <main id="reader" class="reader" hidden>
-    <div class="config" id="config">
-      <div class="group book">
-        <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-        <span id="booktitle"></span>
-        <select id="chapter" aria-label="Chapter"></select>
+    <div class="rbar" id="rbar">
+      <nav class="crumbs" aria-label="breadcrumb">
+        <button class="mini-logo" id="cr-logo" title="library">book<b>type</b></button>
+        <button id="cr-lib">library</button><i>/</i>
+        <button id="cr-book" title="chapters (esc)"></button><i>/</i>
+        <span id="cr-chap"></span>
+      </nav>
+      <div class="stats" id="live">
+        <span class="pageno" id="s-page"></span>
+        <span><b id="s-wpm">-</b>wpm</span>
+        <span><b id="s-acc">100%</b>acc</span>
+        <span class="today" id="today"><svg viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg><b id="s-pages">0/3</b></span>
       </div>
-      <i class="sep"></i>
       <button class="icon gear" id="gear" title="settings" aria-expanded="false" aria-controls="settings">
         <svg viewBox="0 0 24 24"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg>
       </button>
       <div class="settings" id="settings" hidden>
+        <span class="lbl">layout</span>
+        <div class="group" data-opt="view">
+          <button data-v="page">book page</button><button data-v="focus">focus</button>
+        </div>
+        <span class="lbl">font</span>
+        <div class="group" data-opt="font">
+          <button data-v="book">serif</button><button data-v="mono">mono</button>
+        </div>
         <span class="lbl">wrong key</span>
         <div class="group" data-opt="strict">
           <button data-v="false">keep going</button><button data-v="true">stop until fixed</button>
@@ -53,25 +67,15 @@
           <button data-v="1">1</button><button data-v="3">3</button><button data-v="5">5</button><button data-v="10">10</button>
           <span class="unit">pages</span>
         </div>
-        <span class="lbl">font</span>
-        <div class="group" data-opt="font">
-          <button data-v="mono">mono</button><button data-v="book">serif</button>
-        </div>
       </div>
     </div>
 
     <p class="hint" id="hint" hidden>just start typing. you read the book as you type it.</p>
-    <div class="live" id="live">
-      <span><b id="s-wpm">0</b>wpm</span>
-      <span><b id="s-acc">100%</b>acc</span>
-      <span><b id="s-prog">0%</b>book</span>
-      <span><b id="s-pages">0/3</b><em id="s-pages-l">pages today</em></span>
-    </div>
     <div class="textwrap">
       <div id="text" class="text"></div>
       <div id="blurred" class="blurred">
-        <svg viewBox="0 0 24 24"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
-        Click here or press any key to focus
+        <span><svg viewBox="0 0 24 24"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+        click here or press any key to keep typing</span>
       </div>
     </div>
     <div class="under">
@@ -79,6 +83,21 @@
         <svg viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" x2="19" y1="5" y2="19"/></svg>
       </button>
     </div>
+  </main>
+
+  <!-- Book: cover, progress, chapters -->
+  <main id="bookview" class="bookview" hidden>
+    <div class="bhead">
+      <div id="bv-cover"></div>
+      <div class="binfo">
+        <h1 id="bv-title"></h1>
+        <p class="author" id="bv-author"></p>
+        <p class="bstats" id="bv-stats"></p>
+        <div class="bar"><i id="bv-bar"></i></div>
+        <button class="primary" id="bv-go"></button>
+      </div>
+    </div>
+    <ol class="chapters" id="bv-chapters"></ol>
   </main>
 
   <!-- Library -->
@@ -133,7 +152,7 @@
   <footer class="foot">
     <div class="keys" id="keys">
       <span><kbd>tab</kbd> - skip paragraph</span>
-      <span><kbd>esc</kbd> - library</span>
+      <span><kbd>esc</kbd> - chapters</span>
       <span><kbd>enter</kbd> or <kbd>space</kbd> - end paragraph</span>
     </div>
     <div class="bottom">

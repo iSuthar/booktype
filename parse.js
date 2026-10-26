@@ -114,6 +114,35 @@ function finalize(paras) {
   return { paras, chapters, startP: first ? first.p : Math.max(0, firstText) };
 }
 
+// ---------- pages ----------
+const PAGE_CHARS = 1100; // typed characters per page, about one printed page
+
+// One page starting at paragraph p0. Chapters (any heading) always start a new page.
+function buildPage(paras, p0) {
+  const items = [];
+  let p = p0, n = 0;
+  while (p < paras.length) {
+    const para = paras[p];
+    if (para.h) {
+      if (n > 0) break;
+      items.push(p++);
+      continue;
+    }
+    if (n > 0 && n + para.t.length > PAGE_CHARS * 1.4) break;
+    items.push(p++);
+    n += para.t.length;
+    if (n >= PAGE_CHARS) break;
+  }
+  return { start: p0, end: p, items };
+}
+
+// first paragraph of every page from the start of the book (startP) to the end
+function paginate(paras, startP) {
+  const starts = [];
+  for (let p = startP; p < paras.length; p = buildPage(paras, p).end) starts.push(p);
+  return starts;
+}
+
 // "CHAPTER XIII" / "Chapter I." / "IV. THE BOSCOMBE VALLEY MYSTERY" -> "Chapter 13" / "Chapter 1" / "Chapter 4: The Boscombe Valley Mystery"
 const ROMAN = { i: 1, v: 5, x: 10, l: 50, c: 100, d: 500, m: 1000 };
 function fromRoman(s) {
@@ -138,4 +167,4 @@ function chapterTitle(t) {
   return `${word} ${n}` + (rest ? ": " + titleCase(rest) : "");
 }
 
-if (typeof module !== "undefined") module.exports = { parsePlainText, cleanPara, finalize, chapterTitle };
+if (typeof module !== "undefined") module.exports = { parsePlainText, cleanPara, finalize, chapterTitle, buildPage, paginate };

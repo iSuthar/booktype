@@ -73,6 +73,18 @@ Read a book by typing it (monkeytype-style). Static site, no backend.
   - Review ideas not done yet: hide "0/3 pages today" before first page, upload card last, card length
     as "N chapters · ~h", "page x/y" in chapter, fewer/dimmer live stats, no tab/esc hints on phones,
     check phone keyboard covering the text on a real phone
+- [x] v3 (2026-10-26): book feel, after a typelit.io review (ideas only, no code/assets copied)
+  - "book page" layout is the default: whole page, Literata serif, ~38em column, paragraph gaps,
+    printed-style chapter heading; window scrolls to keep the caret in the top third. "focus" = old 5-line view
+    (settings > layout). S.view / bt:view; body.view-page / body.view-focus.
+  - fixed pagination: parse.js buildPage/paginate (PAGE_CHARS 1100, from startP); book.pages, pageOf(),
+    chapter.page / chapter.pages -> "page 3 of 8" in the reader, resume loads the page that holds the position
+  - reader top bar: logo / library / book / chapter crumbs + page x of y, wpm, acc, today's pages, settings gear
+  - book page (#bookview): generated cloth-colour cover, chapters done, page x of y, % read, continue button,
+    chapter list with page counts, ticks and current chapter. library card -> book page; Esc: reader -> book -> library
+  - library cards: small cover + "N pages · M chapters" (build_index.js adds counts to books/index.js,
+    run by build_books.py); upload card moved last; "pages today" hidden until there is something to show
+  - typelit notes: hosts 1984 (we don't, US copyright), import needs account + subscription, text overflows on phones
 - Test note: when driving the page in tests, type from S.k (resume point), not from chars[0].
 - Ideas parked: ghost caret of your past pace, focus mode, more books (Gatsby, Dracula,
   Metamorphosis, Dorian Gray, Jekyll & Hyde, Little Women, Art of War, Winnie-the-Pooh),

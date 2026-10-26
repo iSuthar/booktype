@@ -15,7 +15,6 @@ const store = {
   },
 };
 
-const PAGE_CHARS = 650; // target typed characters per page
 const IDLE_MS = 4000;   // pauses longer than this (reading, thinking) don't count against WPM
 const THEMES = ["serika-dark", "serika", "nord", "dracula", "paper", "matrix"];
 const MIN_WPM_MS = 2000; // don't show live wpm until this much typing time (avoids silly first numbers)
@@ -39,7 +38,8 @@ const S = {
   p0: null,             // chapter snapshot at paragraph start
   w0: null,             // { ms, k, clean } at word start
   strict: store.get("strict", false),
-  font: store.get("font", "mono"),
+  font: store.get("font", "book"),
+  view: store.get("view", "page"), // "page" = whole book page, "focus" = monkeytype-style 5 lines
   theme: store.get("theme", "serika-dark"),
   goal: store.get("goal", 3),
 };
@@ -133,11 +133,27 @@ function addPage() {
 
 function prepare(id, title, author, parsed) {
   const { paras, startP } = parsed;
-  const chapters = parsed.chapters.map((c) => ({ ...c, title: chapterTitle(c.title) }));
+  const chapters = parsed.chapters.filter((c) => c.p >= startP).map((c) => ({ ...c, title: chapterTitle(c.title) }));
   for (const c of chapters) paras[c.p] = { ...paras[c.p], t: c.title };
   const cum = [0];
   for (const p of paras) cum.push(cum.at(-1) + (p.h ? 0 : p.t.length));
-  return { id, title, author, paras, chapters, startP, cum, total: cum.at(-1) };
+  const book = { id, title, author, paras, chapters, startP, cum, total: cum.at(-1), pages: paginate(paras, startP) };
+  // first page and page count of each chapter
+  chapters.forEach((c, i) => {
+    c.page = Math.max(0, pageOf(book, c.p));
+    c.pages = (i + 1 < chapters.length ? pageOf(book, chapters[i + 1].p) : book.pages.length) - c.page;
+  });
+  return book;
+}
+
+// index of the page holding paragraph p (-1 before the book's first page)
+function pageOf(book, p) {
+  let lo = 0, hi = book.pages.length - 1, ans = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (book.pages[mid] <= p) { ans = mid; lo = mid + 1; } else hi = mid - 1;
+  }
+  return ans;
 }
 
 async function getBook(id) {
@@ -176,8 +192,11 @@ async function openFile(file) {
 
   const id = "u-" + Math.abs([...title + parsed.paras.length].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7)).toString(36);
   const saved = store.set("book:" + id, { title, author, paras: parsed.paras, chapters: parsed.chapters, startP: parsed.startP });
-  if (saved) store.set("uploads", [{ id, title, author }, ...uploads().filter((u) => u.id !== id)]);
-  books[id] = prepare(id, title, author, parsed);
+  const book = (books[id] = prepare(id, title, author, parsed));
+  if (saved) {
+    const meta = { id, title, author, pages: book.pages.length, chapters: book.chapters.length };
+    store.set("uploads", [meta, ...uploads().filter((u) => u.id !== id)]);
+  }
   if (!saved) toast("Too big to save in this browser: open the file again next visit.", 5000);
   track("upload");
   await openBook(id);
@@ -187,16 +206,32 @@ async function openFile(file) {
 
 function progressOf(id) { return store.get("progress:" + id); }
 
-function showLibrary() {
+// generated cover: book-cloth colour picked from the title, so every book keeps its own
+const COVERS = ["#7a2e2e", "#2e4a7a", "#2e6b4f", "#6b552e", "#55306b", "#2e6670", "#704a2e", "#3d3d5c"];
+function cover(b, small) {
+  const c = el("div", "cover" + (small ? " small" : ""));
+  const h = [...b.title].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) | 0, 0);
+  c.style.setProperty("--cover", COVERS[Math.abs(h) % COVERS.length]);
+  c.append(el("span", "ct", b.title));
+  if (!small) c.append(el("span", "ca", b.author || ""));
+  return c;
+}
+
+function leaveReader() {
   closeSettings();
+  if ($("#reader").hidden) return;
   savePos();
   saveChap();
+}
+
+function showLibrary() {
+  leaveReader();
   show("library");
   updateStreak();
   const st = streak(), today = pagesToday();
-  $("#streakline").textContent =
-    (st ? `${st}-day streak · ` : "") + `${Math.min(today, S.goal)}/${S.goal} pages today` +
-    (today >= S.goal ? " · goal done" : "");
+  $("#streakline").textContent = st || today
+    ? (st ? `${st}-day streak · ` : "") + `${Math.min(today, S.goal)}/${S.goal} pages today` + (today >= S.goal ? " · goal done" : "")
+    : "";
 
   const grid = $("#grid");
   grid.innerHTML = "";
@@ -206,28 +241,73 @@ function showLibrary() {
   for (const b of all) {
     const pr = progressOf(b.id);
     const card = el("button", "card");
-    card.append(el("span", "t", b.title), el("span", "a", b.author || ""));
+    const info = el("div", "info");
+    info.append(el("span", "t", b.title), el("span", "a", b.author || ""));
     const meta = el("span", "meta");
     if (pr) {
       const bar = el("div", "bar"), fill = el("i");
       fill.style.width = (pr.pct || 0).toFixed(1) + "%";
       bar.append(fill);
-      meta.append(`${(pr.pct || 0).toFixed(1)}% read` + (pr.ms ? ` · ${wpm(pr.chars, pr.ms)} wpm avg` : ""), bar);
+      meta.append(`${(pr.pct || 0).toFixed(0)}% read` + (pr.ms > 10000 ? ` · ${wpm(pr.chars, pr.ms)} wpm` : ""), bar);
     } else {
-      meta.textContent = b.chars ? `${Math.round(b.chars / 1000)}k characters` : "your book";
+      meta.textContent = b.pages ? `${b.pages} pages · ${b.chapters} chapters` : "your book";
     }
-    card.append(meta);
-    card.onclick = () => openBook(b.id).catch((e) => toast(e.message, 5000));
+    info.append(meta);
+    card.append(cover(b, true), info);
+    card.onclick = () => showBook(b.id).catch((e) => toast(e.message, 5000));
     grid.append(card);
   }
   const add = el("button", "card add");
   add.append(el("span", "t", "+"), el("span", "a", "Open your own .txt or .epub"));
   add.onclick = () => $("#file").click();
-  grid.prepend(add);
+  grid.append(add);
+}
+
+// Book page: cover, progress and the chapter list (typelit-style), between the library and typing.
+async function showBook(id) {
+  const book = await getBook(id);
+  leaveReader();
+  const pr = progressOf(id);
+  const p = pr ? pr.p : null;
+  const curCh = p == null ? -1 : book.chapters.findLastIndex((c) => c.p <= p);
+  const curPage = p == null ? -1 : Math.max(0, pageOf(book, p));
+
+  $("#bv-cover").replaceChildren(cover(book));
+  $("#bv-title").textContent = book.title;
+  $("#bv-author").textContent = book.author || "";
+  const pct = pr ? pr.pct || 0 : 0;
+  const bits = [
+    `${Math.max(0, curCh)} / ${book.chapters.length} chapters`,
+    pr ? `page ${curPage + 1} of ${book.pages.length}` : `${book.pages.length} pages`,
+    `${pct.toFixed(0)}% read`,
+  ];
+  if (pr && pr.ms > 10000) bits.push(`${wpm(pr.chars, pr.ms)} wpm`);
+  $("#bv-stats").textContent = bits.join(" · ");
+  $("#bv-bar").style.width = pct.toFixed(1) + "%";
+  const ch = book.chapters[curCh];
+  $("#bv-go").textContent = pr && ch ? `continue · ${ch.title.split(":")[0]}, page ${curPage - ch.page + 1}` : "start reading";
+  $("#bv-go").onclick = () => openBook(id);
+
+  const list = $("#bv-chapters");
+  list.innerHTML = "";
+  book.chapters.forEach((c, i) => {
+    const li = el("li"), b = el("button", i < curCh ? "done" : i === curCh ? "cur" : "");
+    const [num, name] = c.title.split(/:\s*(.*)/);
+    b.append(el("span", "num", num), el("span", "name", name || ""));
+    const state = i < curCh ? "✓" : i === curCh ? `page ${curPage - c.page + 1} of ${c.pages}` : `${c.pages} pages`;
+    b.append(el("span", "pg", state));
+    b.onclick = () => openBook(id, c.p);
+    li.append(b);
+    list.append(li);
+  });
+  show("bookview");
+  window.scrollTo(0, 0);
+  $("#bv-go").focus({ preventScroll: true });
 }
 
 function show(view) {
-  for (const v of ["library", "reader", "results", "done"]) $("#" + v).hidden = v !== view;
+  for (const v of ["library", "bookview", "reader", "results", "done"]) $("#" + v).hidden = v !== view;
+  document.body.dataset.view = view;
 }
 
 // ---------- reading ----------
@@ -258,48 +338,31 @@ function add(field, n = 1) {
   if (S.chap) S.chap[field] += n;
 }
 
-async function openBook(id) {
+// open a book where the reader left off, or at paragraph `at` (a chapter picked on the book page)
+async function openBook(id, at) {
   const book = await getBook(id);
   S.book = book;
   store.set("last", id);
   const pr = progressOf(id);
   S.pos = pr && pr.p < book.paras.length ? { p: pr.p, c: pr.c } : { p: book.startP, c: 0 };
   S.chap = store.get("chap:" + id);
-
-  $("#booktitle").textContent = book.title + (book.author ? " · " + book.author : "");
-  const sel = $("#chapter");
-  sel.innerHTML = "";
-  sel.hidden = !book.chapters.length;
-  for (const ch of book.chapters) sel.append(new Option(ch.title, ch.p));
+  if (at != null) {
+    S.pos = { p: at, c: 0 };
+    savePos(true);
+  }
+  $("#cr-book").textContent = book.title;
   track("open");
   show("reader");
   loadPage();
-}
-
-function buildPage(p0) {
-  const paras = S.book.paras;
-  const items = [];
-  let p = p0, n = 0;
-  while (p < paras.length) {
-    const para = paras[p];
-    if (para.h) {
-      if (n > 0) break; // chapters start on a fresh page
-      items.push(p++);
-      continue;
-    }
-    if (n > 0 && n + para.t.length > PAGE_CHARS * 1.6) break;
-    items.push(p++);
-    n += para.t.length;
-    if (n >= PAGE_CHARS) break;
-  }
-  return { start: p0, end: p, items };
 }
 
 function loadPage() {
   const book = S.book;
   show("reader");
   if (S.pos.p >= book.paras.length) return finishBook();
-  S.page = buildPage(S.pos.p);
+  const pi = pageOf(book, S.pos.p);
+  S.page = buildPage(book.paras, pi >= 0 ? book.pages[pi] : S.pos.p);
+  S.page.no = pi;
   if (!S.page.items.some((i) => !book.paras[i].h)) return finishBook();
 
   const idx = chapterIdx(S.pos.p);
@@ -311,7 +374,14 @@ function loadPage() {
   S.chars = [];
   for (const i of S.page.items) {
     const para = book.paras[i];
-    if (para.h) { text.append(el("h2", null, para.t)); continue; }
+    if (para.h) {
+      // "Chapter 1: Down the Rabbit-Hole" -> number line + title line (a book page shows them stacked)
+      const h = el("h2"), [num, name] = para.t.split(/:\s*(.*)/);
+      h.append(el("span", "num", num));
+      if (name) h.append(el("span", "name", name));
+      text.append(h);
+      continue;
+    }
     const pe = el("p");
     const words = para.t.split(" ");
     let ci = 0;
@@ -334,7 +404,7 @@ function loadPage() {
     S.chars.push({ ch: "\n", p: i, i: ci, el: nl });
     text.append(pe);
   }
-  const spacer = el("div"); // room below the last line so it can scroll up to line 2
+  const spacer = el("div", "spacer"); // focus layout: room below the last line so it can scroll up to line 2
   spacer.style.height = "calc(var(--lh) * (var(--lines) - 1))";
   text.append(spacer);
   const caret = el("div");
@@ -350,7 +420,9 @@ function loadPage() {
   S.p0 = { chars: S.chap.chars, ms: S.chap.ms };
   S.w0 = { ms: S.chap.ms, k: S.k, clean: true };
 
-  if (idx >= 0) $("#chapter").selectedIndex = idx;
+  const ch = book.chapters[idx];
+  $("#cr-chap").textContent = ch ? ch.title : "";
+  if (S.view === "page") window.scrollTo(0, 0);
 
   moveCaret(true);
   updateStats();
@@ -364,6 +436,7 @@ function moveCaret(instant) {
   const caret = $("#caret");
   if (!c || !caret) return;
   const e = c.el, box = $("#text");
+  if (S.view === "page") return movePageCaret(c, caret, instant);
   const L = parseFloat(getComputedStyle(box).lineHeight);
   const fs = parseFloat(getComputedStyle(box).fontSize);
   const lineTop = Math.floor((e.offsetTop + e.offsetHeight / 2) / L) * L;
@@ -378,6 +451,21 @@ function moveCaret(instant) {
   const firstP = box.querySelector("p");
   const target = firstP && lineTop <= firstP.offsetTop ? 0 : Math.max(0, lineTop - L);
   if (Math.abs(box.scrollTop - target) > 1) box.scrollTo({ top: target, behavior: instant ? "auto" : "smooth" });
+}
+
+// Book-page layout: the caret sits on the letter; the window scrolls to keep it in the upper half.
+function movePageCaret(c, caret, instant) {
+  // the paragraph-end mark is smaller, so take the height from the letter before it
+  const prev = S.chars[S.k - 1];
+  const ref = c.ch === "\n" && prev && prev.p === c.p ? prev.el : c.el;
+  const h = ref.offsetHeight;
+  if (instant) caret.style.transition = "none";
+  caret.style.transform = `translate(${c.el.offsetLeft - 1}px, ${ref.offsetTop}px)`;
+  caret.style.height = h + "px";
+  if (instant) { void caret.offsetWidth; caret.style.transition = ""; }
+  const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  const y = ref.getBoundingClientRect().top;
+  if (y > vh * 0.6 || y < 60) window.scrollTo({ top: window.scrollY + y - vh * 0.35, behavior: instant ? "auto" : "smooth" });
 }
 
 function tick() {
@@ -567,11 +655,12 @@ function updateStats() {
   const s = S.session;
   $("#s-wpm").textContent = s.ms >= MIN_WPM_MS ? wpm(s.chars, s.ms) : "-";
   $("#s-acc").textContent = acc(s.correct, s.keys) + "%";
-  const c = S.chars[S.k];
-  $("#s-prog").textContent = (c ? pctAt(c.p, c.i) : pctAt(S.page.end, 0)).toFixed(1) + "%";
+  const ch = S.book.chapters[chapterIdx(S.page.start)];
+  $("#s-page").textContent = ch && S.page.no >= 0 ? `page ${S.page.no - ch.page + 1} of ${ch.pages}` : "";
   const today = pagesToday();
   $("#s-pages").textContent = `${Math.min(today, S.goal)}/${S.goal}`;
-  $("#s-pages-l").textContent = today >= S.goal ? "goal done" : "pages today";
+  $("#today").classList.toggle("on", today >= S.goal);
+  $("#today").title = `pages today / daily goal${today >= S.goal ? " (done)" : ""}`;
   updateStreak();
 }
 
@@ -825,7 +914,7 @@ input.addEventListener("compositionend", (e) => {
 
 input.addEventListener("keydown", (e) => {
   if (e.key === "Tab") { e.preventDefault(); skipParagraph(); }
-  if (e.key === "Escape") { e.preventDefault(); if (!closeSettings()) showLibrary(); }
+  if (e.key === "Escape") { e.preventDefault(); if (!closeSettings()) showBook(S.book.id); }
 });
 
 input.addEventListener("focus", () => $("#reader").classList.remove("unfocused"));
@@ -833,11 +922,17 @@ input.addEventListener("focus", () => $("#reader").classList.remove("unfocused")
 input.addEventListener("blur", () => { $("#reader").classList.add("unfocused"); document.body.classList.remove("focus"); });
 
 document.addEventListener("keydown", (e) => {
-  if (document.activeElement === input || e.metaKey || e.ctrlKey || e.altKey) return;
+  // defaultPrevented: the input already handled this key (its handler may have switched screens since)
+  if (e.defaultPrevented || document.activeElement === input || e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.target.tagName === "SELECT") return;
   if (!$("#results").hidden) {
     if (e.key === "Enter" && e.target.id !== "r-share") { e.preventDefault(); continueFromResults(); }
+    if (e.key === "Escape") showBook(S.book.id);
+    return;
+  }
+  if (!$("#bookview").hidden) {
     if (e.key === "Escape") showLibrary();
+    if (e.key === "Enter" && e.target.tagName !== "BUTTON") $("#bv-go").click();
     return;
   }
   if (!$("#reader").hidden) {
@@ -851,7 +946,7 @@ document.addEventListener("keydown", (e) => {
       e.preventDefault();
       skipParagraph();
     }
-  } else if (e.key === "Escape" && S.book && !$("#library").hidden) openBook(S.book.id);
+  }
 });
 
 $("#text").addEventListener("click", focusInput);
@@ -872,11 +967,9 @@ $("#r-canvas").addEventListener("mousemove", chartHover);
 $("#r-canvas").addEventListener("touchstart", chartHover, { passive: true });
 $("#r-canvas").addEventListener("mouseleave", () => drawChart(-1));
 
-$("#chapter").addEventListener("change", (e) => {
-  S.pos = { p: +e.target.value, c: 0 };
-  savePos(true);
-  loadPage();
-});
+$("#cr-logo").addEventListener("click", showLibrary);
+$("#cr-lib").addEventListener("click", showLibrary);
+$("#cr-book").addEventListener("click", () => showBook(S.book.id));
 
 $("#file").addEventListener("change", (e) => {
   const f = e.target.files[0];
@@ -894,25 +987,32 @@ document.fonts?.ready.then(() => moveCaret(true));
 // ---------- options ----------
 
 function renderOptions() {
-  const values = { strict: String(S.strict), goal: String(S.goal), font: S.font };
-  for (const g of document.querySelectorAll("#config [data-opt]")) {
+  const values = { strict: String(S.strict), goal: String(S.goal), font: S.font, view: S.view };
+  for (const g of document.querySelectorAll("#settings [data-opt]")) {
     for (const b of g.querySelectorAll("button")) b.classList.toggle("on", b.dataset.v === values[g.dataset.opt]);
   }
   document.body.classList.toggle("serif", S.font === "book");
+  document.body.classList.toggle("view-page", S.view === "page");
+  document.body.classList.toggle("view-focus", S.view === "focus");
   document.documentElement.dataset.theme = S.theme;
   $("#theme-name").textContent = S.theme.replace("-", " ");
 }
 
-$("#config").addEventListener("click", (e) => {
+$("#settings").addEventListener("click", (e) => {
   const b = e.target.closest("[data-opt] button");
   if (!b) return;
   const opt = b.parentElement.dataset.opt, v = b.dataset.v;
   if (opt === "strict") S.strict = v === "true";
   if (opt === "goal") S.goal = +v;
   if (opt === "font") S.font = v;
+  if (opt === "view") S.view = v;
   store.set(opt, S[opt]);
   renderOptions();
-  if (S.book && !$("#reader").hidden) { moveCaret(true); updateStats(); }
+  if (S.book && !$("#reader").hidden) {
+    $("#text").scrollTop = 0;
+    moveCaret(true);
+    updateStats();
+  }
   focusInput();
 });
 

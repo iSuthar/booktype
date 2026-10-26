@@ -8,6 +8,7 @@ Run: python3 build_books.py
 """
 import json
 import re
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).parent
@@ -51,6 +52,8 @@ def main() -> None:
     (out_dir / "index.js").write_text(
         f"window.BOOK_INDEX = {json.dumps(index, ensure_ascii=False, indent=1)};\n", encoding="utf-8"
     )
+    # page + chapter counts come from the site's own parser (parse.js), so they match the reader
+    subprocess.run(["node", str(ROOT / "build_index.js")], check=True)
 
 
 if __name__ == "__main__":
