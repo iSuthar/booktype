@@ -3,6 +3,9 @@
 Read a book by typing it (monkeytype-style). Static site, no backend.
 
 ## Run
+**Before every deploy: `python3 stamp.py`** (versions the asset links; without it a browser can mix the new
+index.html with old cached app.js -> "Cannot set properties of null", no book opens. Happened 2026-10-26.)
+
 `python3 -m http.server 8000` in this folder, open http://localhost:8000.
 (Opening index.html directly also works; books load as `<script>` files.)
 
