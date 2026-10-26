@@ -39,7 +39,8 @@ const S = {
   w0: null,             // { ms, k, clean } at word start
   strict: store.get("strict", false),
   font: store.get("font", "book"),
-  view: store.get("view", "page"), // "page" = whole book page, "focus" = monkeytype-style 5 lines
+  view: store.get("view", "page"),
+  size: store.get("size", "m"), // text size: s / m / l // "page" = whole book page, "focus" = monkeytype-style 5 lines
   theme: store.get("theme", "serika-dark"),
   goal: store.get("goal", 3),
 };
@@ -212,8 +213,12 @@ function cover(b, small) {
   const c = el("div", "cover" + (small ? " small" : ""));
   const h = [...b.title].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) | 0, 0);
   c.style.setProperty("--cover", COVERS[Math.abs(h) % COVERS.length]);
-  c.append(el("span", "ct", b.title));
-  if (!small) c.append(el("span", "ca", b.author || ""));
+  if (small) {
+    // too small for a title: one big initial, like a monogrammed spine
+    c.append(el("span", "ct", b.title.replace(/^(the|a|an)\s+/i, "")[0] || "?"));
+  } else {
+    c.append(el("span", "ct", b.title), el("span", "ca", b.author || ""));
+  }
   return c;
 }
 
@@ -250,7 +255,8 @@ function showLibrary() {
       bar.append(fill);
       meta.append(`${(pr.pct || 0).toFixed(0)}% read` + (pr.ms > 10000 ? ` · ${wpm(pr.chars, pr.ms)} wpm` : ""), bar);
     } else {
-      meta.textContent = b.pages ? `${b.pages} pages · ${b.chapters} chapters` : "your book";
+      if (b.pages) meta.append(el("span", null, `${b.pages} pages`), el("span", null, `${b.chapters} chapters`));
+      else meta.textContent = "your book";
     }
     info.append(meta);
     card.append(cover(b, true), info);
@@ -261,6 +267,7 @@ function showLibrary() {
   add.append(el("span", "t", "+"), el("span", "a", "Open your own .txt or .epub"));
   add.onclick = () => $("#file").click();
   grid.append(add);
+  grid.firstChild.focus({ preventScroll: true }); // Enter opens the last book you read
 }
 
 // Book page: cover, progress and the chapter list (typelit-style), between the library and typing.
@@ -453,7 +460,8 @@ function moveCaret(instant) {
   if (Math.abs(box.scrollTop - target) > 1) box.scrollTo({ top: target, behavior: instant ? "auto" : "smooth" });
 }
 
-// Book-page layout: the caret sits on the letter; the window scrolls to keep it in the upper half.
+// Book-page layout: the caret sits on the letter. Once it passes 40% of the screen, the page scrolls
+// line by line so the line you type stays at the same height (eyes stay put on a laptop screen).
 function movePageCaret(c, caret, instant) {
   // the paragraph-end mark is smaller, so take the height from the letter before it
   const prev = S.chars[S.k - 1];
@@ -464,8 +472,9 @@ function movePageCaret(c, caret, instant) {
   caret.style.height = h + "px";
   if (instant) { void caret.offsetWidth; caret.style.transition = ""; }
   const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-  const y = ref.getBoundingClientRect().top;
-  if (y > vh * 0.6 || y < 60) window.scrollTo({ top: window.scrollY + y - vh * 0.35, behavior: instant ? "auto" : "smooth" });
+  const y = ref.getBoundingClientRect().top, line = vh * 0.4;
+  const hidden = y < $("#rbar").getBoundingClientRect().bottom + 8; // under the sticky top bar
+  if (y > line + 2 || hidden) window.scrollTo({ top: Math.max(0, window.scrollY + y - line), behavior: instant ? "auto" : "smooth" });
 }
 
 function tick() {
@@ -933,6 +942,18 @@ document.addEventListener("keydown", (e) => {
   if (!$("#bookview").hidden) {
     if (e.key === "Escape") showLibrary();
     if (e.key === "Enter" && e.target.tagName !== "BUTTON") $("#bv-go").click();
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      moveFocus([$("#bv-go"), ...document.querySelectorAll("#bv-chapters button")], e.key === "ArrowDown" ? 1 : -1);
+    }
+    return;
+  }
+  if (!$("#library").hidden && e.key.startsWith("Arrow")) {
+    e.preventDefault();
+    const cards = [...document.querySelectorAll("#grid .card")];
+    const cols = getComputedStyle($("#grid")).gridTemplateColumns.split(" ").length;
+    const step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols }[e.key];
+    moveFocus(cards, step);
     return;
   }
   if (!$("#reader").hidden) {
@@ -949,14 +970,27 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+// arrow-key navigation over a list of buttons
+function moveFocus(items, step) {
+  const i = items.indexOf(document.activeElement);
+  const next = items[i < 0 ? 0 : Math.min(items.length - 1, Math.max(0, i + step))];
+  next.focus({ preventScroll: true });
+  next.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
 $("#text").addEventListener("click", focusInput);
 $("#skip").addEventListener("click", () => { skipParagraph(); focusInput(); });
 $("#nav-library").addEventListener("click", showLibrary);
-// moving the mouse brings the hidden UI back (focus mode)
-let mouseAt = null;
+// moving the mouse brings the hidden UI back (focus mode). Laptop trackpads twitch while you type,
+// so it takes a deliberate move (40px within half a second), not a brush of the palm.
+let mouseAt = null, moved = 0, movedAt = 0;
 document.addEventListener("mousemove", (e) => {
-  if (mouseAt && Math.abs(e.clientX - mouseAt[0]) + Math.abs(e.clientY - mouseAt[1]) > 4) document.body.classList.remove("focus");
+  const now = performance.now();
+  if (now - movedAt > 500) moved = 0;
+  if (mouseAt) moved += Math.abs(e.clientX - mouseAt[0]) + Math.abs(e.clientY - mouseAt[1]);
   mouseAt = [e.clientX, e.clientY];
+  movedAt = now;
+  if (moved > 40) document.body.classList.remove("focus");
 });
 $("#blurred").addEventListener("click", focusInput);
 $("#logo").addEventListener("click", showLibrary);
@@ -987,13 +1021,14 @@ document.fonts?.ready.then(() => moveCaret(true));
 // ---------- options ----------
 
 function renderOptions() {
-  const values = { strict: String(S.strict), goal: String(S.goal), font: S.font, view: S.view };
+  const values = { strict: String(S.strict), goal: String(S.goal), font: S.font, view: S.view, size: S.size };
   for (const g of document.querySelectorAll("#settings [data-opt]")) {
     for (const b of g.querySelectorAll("button")) b.classList.toggle("on", b.dataset.v === values[g.dataset.opt]);
   }
   document.body.classList.toggle("serif", S.font === "book");
   document.body.classList.toggle("view-page", S.view === "page");
   document.body.classList.toggle("view-focus", S.view === "focus");
+  for (const z of ["s", "l"]) document.body.classList.toggle("size-" + z, S.size === z);
   document.documentElement.dataset.theme = S.theme;
   $("#theme-name").textContent = S.theme.replace("-", " ");
 }
@@ -1006,6 +1041,7 @@ $("#settings").addEventListener("click", (e) => {
   if (opt === "goal") S.goal = +v;
   if (opt === "font") S.font = v;
   if (opt === "view") S.view = v;
+  if (opt === "size") S.size = v;
   store.set(opt, S[opt]);
   renderOptions();
   if (S.book && !$("#reader").hidden) {

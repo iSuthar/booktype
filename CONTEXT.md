@@ -85,6 +85,14 @@ Read a book by typing it (monkeytype-style). Static site, no backend.
   - library cards: small cover + "N pages · M chapters" (build_index.js adds counts to books/index.js,
     run by build_books.py); upload card moved last; "pages today" hidden until there is something to show
   - typelit notes: hosts 1984 (we don't, US copyright), import needs account + subscription, text overflows on phones
+- [x] v3.1 (2026-10-26) laptop pass (tested 1280x720, 1366x768, 1536x864); site is mainly used on laptops
+  - reader top bar is sticky (stats stay visible while the page scrolls)
+  - page view scrolls line by line once the caret passes 40% of the screen, so the typing line stays at eye level
+  - focus mode needs a deliberate mouse move (40px in 0.5 s) to bring the UI back: trackpad twitches don't
+  - keyboard: library opens with the last book focused, arrow keys move between cards, Enter opens;
+    book page: Enter continue, up/down through chapters, Esc library. Footer hints change per screen
+  - settings: text size small/medium/large (body.size-s / size-l); key help row
+  - small covers show a big initial (titles were breaking mid-word)
 - Test note: when driving the page in tests, type from S.k (resume point), not from chars[0].
 - Ideas parked: ghost caret of your past pace, focus mode, more books (Gatsby, Dracula,
   Metamorphosis, Dorian Gray, Jekyll & Hyde, Little Women, Art of War, Winnie-the-Pooh),

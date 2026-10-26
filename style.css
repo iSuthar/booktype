@@ -68,7 +68,9 @@ body.focus .foot, body.focus .under { opacity: 0; pointer-events: none; }
 
 /* which chrome shows on which screen */
 body[data-view="reader"] .top { display: none; }
-body:not([data-view="reader"]) .keys { display: none; }
+.keys [data-for] { display: none; }
+body[data-view="reader"] .keys [data-for="reader"], body[data-view="library"] .keys [data-for="library"],
+body[data-view="bookview"] .keys [data-for="bookview"] { display: inline; }
 body.focus { cursor: none; }
 
 /* ---------- header ---------- */
@@ -92,7 +94,11 @@ body.focus { cursor: none; }
 .streak.on { color: var(--main); }
 
 /* ---------- reader top bar: breadcrumb left, stats right ---------- */
-.rbar { position: relative; display: flex; align-items: center; gap: 18px; min-height: 40px; }
+.rbar {
+  position: sticky; top: 0; z-index: 4; display: flex; align-items: center; gap: 18px; min-height: 40px;
+  background: var(--bg); padding: 10px 0; margin-top: -10px; /* stays on screen while the page scrolls */
+}
+body[data-view="reader"] .page { padding-top: 18px; }
 .crumbs { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex: 1; font-size: 14px; color: var(--sub); white-space: nowrap; }
 .crumbs button { transition: color var(--t); }
 .crumbs button:hover { color: var(--text); }
@@ -124,6 +130,9 @@ body.focus { cursor: none; }
 .settings .group > button:hover { color: var(--text); }
 .settings .group > button.on { color: var(--main); }
 .settings .unit { padding: 4px 0 4px 4px; }
+.settings .keyhelp { padding: 4px 6px; }
+body.size-s { --pfs: 18px; --fs: 24px; --lh: calc(var(--fs) * 1.6); }
+body.size-l { --pfs: 23px; --fs: 32px; --lh: calc(var(--fs) * 1.6); }
 
 /* ---------- typing area ---------- */
 .reader { display: flex; flex-direction: column; gap: 18px; width: 100%; }
@@ -190,7 +199,7 @@ body.view-page .text {
 body.view-page .text p { text-indent: 0; margin: 0 0 1em; }
 body.view-page .text h2 {
   white-space: normal; text-transform: none; letter-spacing: 0; font-size: 1em; line-height: 1.3;
-  margin: 1.2em 0 2em; text-align: center; color: var(--sub); font-weight: 400;
+  margin: .6em 0 1.6em; text-align: center; color: var(--sub); font-weight: 400;
 }
 body.view-page .text h2 .num { display: block; font-size: .75em; letter-spacing: .25em; text-transform: uppercase; margin-bottom: .5em; }
 body.view-page .text h2 .name { display: block; font-family: var(--font-book); font-size: 1.6em; color: var(--text); font-weight: 600; }
@@ -238,7 +247,7 @@ body.view-focus .text h2 .name::before { content: ": "; }
 .cover .ct { font-weight: 600; font-size: 18px; line-height: 1.2; }
 .cover .ca { font-size: 12px; opacity: .8; }
 .cover.small { width: 60px; padding: 6px 4px 6px 9px; justify-content: center; border-radius: 2px 5px 5px 2px; box-shadow: none; flex: none; }
-.cover.small .ct { font-size: 8px; line-height: 1.15; overflow-wrap: anywhere; hyphens: auto; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; }
+.cover.small .ct { font-size: 28px; line-height: 1; opacity: .9; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; }
 .under { display: flex; justify-content: center; }
 
 /* ---------- library ---------- */
@@ -256,12 +265,13 @@ body.view-focus .text h2 .name::before { content: ": "; }
 .card .info { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
 .card .t { font-family: var(--font-book); font-size: 19px; line-height: 1.25; color: var(--text); }
 .card .a { color: var(--sub); font-size: 13px; }
-.card .meta { margin-top: auto; color: var(--sub); font-size: 12px; font-family: var(--font-mono); display: flex; flex-direction: column; gap: 8px; }
+.card .meta { margin-top: auto; color: var(--sub); font-size: 12px; font-family: var(--font-mono); display: flex; flex-direction: column; gap: 4px; }
+.card .meta .bar { margin-top: 4px; }
 .bar { height: 4px; border-radius: 2px; background: var(--bg); overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--main); }
 .card.add { flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: none; box-shadow: inset 0 0 0 2px var(--sub-alt); }
 .card.add .t { font-size: 34px; color: var(--main); font-family: var(--font-mono); }
-.card.add:hover { box-shadow: inset 0 0 0 2px var(--main); }
+.card.add:hover, .card.add:focus-visible { box-shadow: inset 0 0 0 2px var(--main); }
 .note { color: var(--sub); font-size: 13px; margin-top: 24px; }
 
 /* ---------- results ---------- */

@@ -54,6 +54,10 @@
         <div class="group" data-opt="view">
           <button data-v="page">book page</button><button data-v="focus">focus</button>
         </div>
+        <span class="lbl">text size</span>
+        <div class="group" data-opt="size">
+          <button data-v="s">small</button><button data-v="m">medium</button><button data-v="l">large</button>
+        </div>
         <span class="lbl">font</span>
         <div class="group" data-opt="font">
           <button data-v="book">serif</button><button data-v="mono">mono</button>
@@ -67,6 +71,8 @@
           <button data-v="1">1</button><button data-v="3">3</button><button data-v="5">5</button><button data-v="10">10</button>
           <span class="unit">pages</span>
         </div>
+        <span class="lbl">keys</span>
+        <span class="keyhelp"><kbd>tab</kbd> skip paragraph · <kbd>esc</kbd> chapters</span>
       </div>
     </div>
 
@@ -151,9 +157,14 @@
 
   <footer class="foot">
     <div class="keys" id="keys">
-      <span><kbd>tab</kbd> - skip paragraph</span>
-      <span><kbd>esc</kbd> - chapters</span>
-      <span><kbd>enter</kbd> or <kbd>space</kbd> - end paragraph</span>
+      <span data-for="reader"><kbd>tab</kbd> - skip paragraph</span>
+      <span data-for="reader"><kbd>esc</kbd> - chapters</span>
+      <span data-for="reader"><kbd>enter</kbd> or <kbd>space</kbd> - end paragraph</span>
+      <span data-for="library"><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> - choose a book</span>
+      <span data-for="library"><kbd>enter</kbd> - open</span>
+      <span data-for="bookview"><kbd>enter</kbd> - continue reading</span>
+      <span data-for="bookview"><kbd>↑</kbd> <kbd>↓</kbd> - chapters</span>
+      <span data-for="bookview"><kbd>esc</kbd> - library</span>
     </div>
     <div class="bottom">
       <div class="links">
