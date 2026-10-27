@@ -5,7 +5,7 @@ window.BOOK_INDEX = [
   "author": "Jane Austen",
   "source": "Project Gutenberg #1342",
   "chars": 728713,
-  "pages": 578,
+  "pages": 556,
   "chapters": 61
  },
  {
@@ -23,7 +23,7 @@ window.BOOK_INDEX = [
   "author": "Mary Shelley",
   "source": "Project Gutenberg #84",
   "chars": 419336,
-  "pages": 361,
+  "pages": 350,
   "chapters": 28
  },
  {
@@ -32,7 +32,7 @@ window.BOOK_INDEX = [
   "author": "H. G. Wells",
   "source": "Project Gutenberg #35",
   "chars": 179698,
-  "pages": 160,
+  "pages": 158,
   "chapters": 16
  },
  {
@@ -41,7 +41,7 @@ window.BOOK_INDEX = [
   "author": "Arthur Conan Doyle",
   "source": "Project Gutenberg #1661",
   "chars": 562202,
-  "pages": 469,
+  "pages": 459,
   "chapters": 12
  }
 ];

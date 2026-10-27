@@ -128,7 +128,8 @@ function buildPage(paras, p0) {
       items.push(p++);
       continue;
     }
-    if (n > 0 && n + para.t.length > PAGE_CHARS * 1.4) break;
+    // a long paragraph goes to the next page only if this page is already half full
+    if (n >= PAGE_CHARS / 2 && n + para.t.length > PAGE_CHARS * 1.4) break;
     items.push(p++);
     n += para.t.length;
     if (n >= PAGE_CHARS) break;

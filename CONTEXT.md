@@ -96,6 +96,10 @@ index.html with old cached app.js -> "Cannot set properties of null", no book op
     book page: Enter continue, up/down through chapters, Esc library. Footer hints change per screen
   - settings: text size small/medium/large (body.size-s / size-l); key help row
   - small covers show a big initial (titles were breaking mid-word)
+- [x] v3.2 (2026-10-27) from a user screenshot (Frankenstein page 1 had 3 short paragraphs + empty space):
+  - a page breaks before a long paragraph only once it is half full (parse.js buildPage)
+  - untyped text darker in book page view (sub 35% instead of 60%) so it reads like print, not placeholder
+  - users who picked mono earlier keep mono (bt:font); settings > font > serif gives the book look
 - Test note: when driving the page in tests, type from S.k (resume point), not from chars[0].
 - Ideas parked: ghost caret of your past pace, focus mode, more books (Gatsby, Dracula,
   Metamorphosis, Dorian Gray, Jekyll & Hyde, Little Women, Art of War, Winnie-the-Pooh),
